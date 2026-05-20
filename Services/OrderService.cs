@@ -73,7 +73,16 @@ public class OrderService
 
                 var subtotal = product.Price * item.Quantity;
 
-                product.Stock -= item.Quantity;
+                var affectedRows = await _db.Products
+                    .Where(p => p.Id == product.Id && p.Version == product.Version)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(p => p.Stock, p => p.Stock - item.Quantity)
+                        .SetProperty(p => p.Version, p => p.Version + 1));
+
+                if (affectedRows == 0)
+                {
+                    throw new BadRequestException("Stock was modified by another operation. Please try again.");
+                }
 
                 total += subtotal;
 
@@ -112,6 +121,13 @@ public class OrderService
                         Subtotal = i.Subtotal
                     }).ToList()
             };
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            await transaction.RollbackAsync();
+
+            throw new BadRequestException(
+                "Stock was modified by another operation. Please try again.");
         }
         catch
         {

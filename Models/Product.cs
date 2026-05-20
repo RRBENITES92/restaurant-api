@@ -15,5 +15,9 @@ public class Product
     public int Stock { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    //public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+
+    public int Version { get; set; } = 1;
     
 }
