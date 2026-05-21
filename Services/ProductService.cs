@@ -65,7 +65,7 @@ public class ProductService : IProductService
         };
     }
 
-    public async Task<ProductResponseDto?> GetProductByIdAsync(int id)
+    public async Task<ProductResponseDto> GetProductByIdAsync(int id)
     {
         var product = await _db.Products
         .Include(p => p.Category)
@@ -77,19 +77,13 @@ public class ProductService : IProductService
             throw new NotFoundException("Product not found");
         }
 
-        return new ProductResponseDto
-        {
-            Id = product.Id,
-            Name = product.Name,
-            Price = product.Price,
-            CategoryName = product.Category != null
-                ? product.Category.Name
-                : null
-        };
+        return MapToResponseDto(product);
     }
 
     public async Task<ProductResponseDto> CreateProductAsync(ProductCreateDto dto)
     {
+        await ValidateCategoryExistsAsync(dto.CategoryId);
+
         var product = new Product
         {
             Name = dto.Name,
@@ -101,66 +95,70 @@ public class ProductService : IProductService
 
         await _db.SaveChangesAsync();
 
-        return new ProductResponseDto
-        {
-            Id = product.Id,
-            Name = product.Name,
-            Price = product.Price
-        };
+        return MapToResponseDto(product);
     }
 
     public async Task<ProductResponseDto?> UpdateProductAsync(int id, ProductCreateDto dto)
     {
-        var product = await _db.Products.FindAsync(id);
+        var product = await _db.Products
+        .FirstOrDefaultAsync(p => p.Id == id && p.IsActive);
 
         if (product == null)
         {
-            return null;
+            throw new NotFoundException("Product not found");
         }
+
+        await ValidateCategoryExistsAsync(dto.CategoryId);
 
         product.Name = dto.Name;
         product.Price = dto.Price;
+        product.CategoryId = dto.CategoryId;
 
         await _db.SaveChangesAsync();
 
-        return new ProductResponseDto
-        {
-            Id = product.Id,
-            Name = product.Name,
-            Price = product.Price
-        };
+        return MapToResponseDto(product);
     }
 
-    public async Task<bool> DeleteProductAsync(int id)
+    public async Task DeactivateProductAsync(int id)
     {
-        var product = await _db.Products.FindAsync(id);
+        var product = await _db.Products
+        .FirstOrDefaultAsync(p => p.Id == id && p.IsActive);
 
         if (product == null)
         {
-            return false;
-        }
-
-        _db.Products.Remove(product);
-
-        await _db.SaveChangesAsync();
-
-        return true;
-    }
-
-    public async Task<bool> DeactivateProductAsync(int id)
-    {
-        var product = await _db.Products.FindAsync(id);
-
-        if (product == null)
-        {
-            return false;
+            throw new NotFoundException("Product not found");
         }
 
         product.IsActive = false;
 
         await _db.SaveChangesAsync();
+    }
 
-        return true;
+    private static ProductResponseDto MapToResponseDto(Product product)
+    {
+        return new ProductResponseDto
+        {
+            Id = product.Id,
+            Name = product.Name,
+            Price = product.Price,
+            CategoryName = product.Category?.Name
+        };
+    }
+
+    private async Task ValidateCategoryExistsAsync(int? categoryId)
+    {
+        if (!categoryId.HasValue)
+        {
+            return;
+        }
+
+        var categoryExists = await _db.Categories
+            .AnyAsync(c => c.Id == categoryId.Value);
+
+        if (!categoryExists)
+        {
+            throw new BadRequestException("Category does not exist");
+        }
     }
 
 }

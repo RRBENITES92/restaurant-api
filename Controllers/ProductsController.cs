@@ -65,43 +65,25 @@ public class ProductsController : ControllerBase
         return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateProduct(int id, ProductCreateDto dto)
     {
         var product = await _productService.UpdateProductAsync(id, dto);
 
-        if (product == null)
+        return Ok(new ApiResponse<ProductResponseDto>
         {
-            return NotFound();
-        }
-
-        return Ok(product);
-    }
-
-    [Authorize(Roles = "Admin")]
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteProduct(int id)
-    {
-        var deleted = await _productService.DeleteProductAsync(id);
-
-        if (!deleted)
-        {
-            return NotFound();
-        }
-
-        return NoContent();
+            Success = true,
+            Message = "Product updated successfully",
+            Data = product
+        });
     }
 
     [Authorize(Roles = "Admin")]
     [HttpPut("{id}/deactivate")]
     public async Task<IActionResult> DeactivateProduct(int id)
     {
-        var result = await _productService.DeactivateProductAsync(id);
-
-        if (!result)
-        {
-            return NotFound();
-        }
+        await _productService.DeactivateProductAsync(id);
 
         return NoContent();
     }

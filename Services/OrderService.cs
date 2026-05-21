@@ -24,11 +24,6 @@ public class OrderService
 
         try
         {
-            if (dto.Items.Count == 0)
-            {
-                throw new BadRequestException("Order must contain at least one item");
-            }
-
             var order = new Order();
 
             decimal total = 0;
@@ -54,11 +49,6 @@ public class OrderService
 
             foreach (var item in dto.Items)
             {
-                if (item.Quantity <= 0)
-                {
-                    throw new BadRequestException("Quantity must be greater than zero");
-                }
-
                 var product = products.FirstOrDefault(p => p.Id == item.ProductId);
 
                 if (product == null)
