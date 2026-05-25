@@ -57,6 +57,7 @@ public class ProductsController : ControllerBase
         });
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost]
     public async Task<IActionResult> CreateProduct(ProductCreateDto dto)
     {
